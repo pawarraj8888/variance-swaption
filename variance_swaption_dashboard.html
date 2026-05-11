@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variance Swaption Pricing | Bergomi 2F Model</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --black:   #0a0a0a;
+  --white:   #ffffff;
+  --off:     #f7f6f3;
+  --border:  #d8d5ce;
+  --muted:   #6b6660;
+  --blue:    #1a3a6b;
+  --blue-lt: #e8eef7;
+  --green:   #1a4a2e;
+  --green-lt:#e8f3ec;
+  --red:     #6b1a1a;
+  --red-lt:  #f7e8e8;
+  --serif:   'EB Garamond', Georgia, serif;
+  --mono:    'DM Mono', monospace;
+}
+
+body {
+  background: var(--white);
+  color: var(--black);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.page { max-width: 960px; margin: 0 auto; padding: 48px 32px 80px; }
+
+/* header */
+.hd { border-bottom: 2px solid var(--black); padding-bottom: 20px; margin-bottom: 36px; }
+.hd-course { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.hd-title { font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: 6px; }
+.hd-sub { font-size: 14px; color: var(--muted); font-family: var(--mono); }
+.hd-meta { display: flex; gap: 24px; margin-top: 14px; flex-wrap: wrap; }
+.hd-chip { font-family: var(--mono); font-size: 11px; background: var(--off); border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; color: var(--muted); }
+
+/* section */
+.sec-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin: 36px 0 14px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+/* param grid */
+.param-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 8px; }
+.param-card { background: var(--off); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center; }
+.param-name { font-family: var(--mono); font-size: 10px; color: var(--muted); display: block; margin-bottom: 4px; }
+.param-val { font-size: 18px; font-weight: 700; color: var(--black); display: block; }
+
+/* setup strip */
+.setup-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+.setup-card { border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; }
+.setup-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted); display: block; margin-bottom: 4px; letter-spacing: 0.5px; }
+.setup-val { font-size: 20px; font-weight: 700; }
+.setup-unit { font-size: 12px; font-weight: 400; color: var(--muted); font-family: var(--mono); }
+
+/* results */
+.results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.result-panel { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.result-panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.result-panel-label { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.result-panel-method { font-size: 15px; font-weight: 700; }
+.result-panel-body { padding: 14px 18px; }
+.result-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--off); font-size: 14px; }
+.result-row:last-child { border-bottom: none; }
+.result-row-label { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.result-row-val { font-weight: 700; font-size: 14px; }
+.result-price { font-size: 32px; font-weight: 700; padding: 12px 0 4px; }
+.tag-blue { color: var(--blue); }
+.tag-green { color: var(--green); }
+
+/* comparison bar */
+.cmp { border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+.cmp-row { margin-bottom: 14px; }
+.cmp-row:last-child { margin-bottom: 0; }
+.cmp-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.cmp-name { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.cmp-value { font-weight: 700; font-family: var(--mono); }
+.cmp-track { height: 24px; background: var(--off); border-radius: 4px; overflow: hidden; }
+.cmp-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 10px; font-family: var(--mono); font-size: 11px; font-weight: 500; color: white; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+.cmp-ci { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+/* formula box */
+.formula { background: var(--off); border-left: 3px solid var(--black); padding: 10px 16px; margin: 10px 0; font-family: var(--mono); font-size: 13px; line-height: 1.8; }
+
+/* summary table */
+.sum-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sum-table thead th { background: var(--black); color: var(--white); padding: 10px 14px; text-align: left; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.5px; }
+.sum-table tbody tr:nth-child(even) { background: var(--off); }
+.sum-table tbody tr:last-child { background: #fffbf0; border-top: 2px solid var(--border); }
+.sum-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.sum-table td:not(:first-child) { font-family: var(--mono); text-align: center; font-weight: 700; }
+
+/* chart */
+.chart-wrap { border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.chart-sub { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-bottom: 14px; }
+
+/* observation */
+.obs { border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin-bottom: 10px; }
+.obs-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.obs-body { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* footer */
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+footer a { color: var(--blue); text-decoration: none; }
+
+@media (max-width: 700px) {
+  .results-grid, .param-grid, .setup-strip { grid-template-columns: 1fr 1fr; }
+  .hd-title { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="hd">
+    <p class="hd-course">Advanced Equity Derivatives &mdash; Homework 3 (Final Project)</p>
+    <h1 class="hd-title">Variance Swaption Pricing</h1>
+    <p class="hd-sub">Bergomi Two-Factor Stochastic Volatility Model</p>
+    <div class="hd-meta">
+      <span class="hd-chip">Rajvardhan Pawar &mdash; rsp9234</span>
+      <span class="hd-chip">NYU MFE</span>
+      <span class="hd-chip">May 11, 2026</span>
+      <span class="hd-chip">Table 7.1, Set I</span>
+    </div>
+  </div>
+
+  <!-- SETUP -->
+  <p class="sec-label">Problem Setup</p>
+  <div class="setup-strip">
+    <div class="setup-card">
+      <span class="setup-lbl">Forward Variance F = K</span>
+      <span class="setup-val">0.04 <span class="setup-unit">(20%)<sup>2</sup></span></span>
+    </div>
+    <div class="setup-card">
+      <span class="setup-lbl">Strike K (at-the-money)</span>
+      <span class="setup-val">0.04 <span class="setup-unit">= F</span></span>
+    </div>
+    <div class="setup-card">
+      <span class="setup-lbl">Swaption Expiry T<sub>1</sub></span>
+      <span class="setup-val">0.5 <span class="setup-unit">years</span></span>
+    </div>
+    <div class="setup-card">
+      <span class="setup-lbl">VS Maturity T<sub>2</sub></span>
+      <span class="setup-val">1.0 <span class="setup-unit">years</span></span>
+    </div>
+  </div>
+  <p style="font-size:13px;color:var(--muted);font-family:var(--mono);margin-top:6px">
+    Payoff at T<sub>1</sub>: max( &#963;&#772;<sup>2</sup><sub>T1,T2</sub>(T<sub>1</sub>) &minus; K , 0 ) &nbsp;&nbsp;|&nbsp;&nbsp; Discount rate r = 1% continuous
+  </p>
+
+  <!-- PARAMETERS -->
+  <p class="sec-label" style="margin-top:28px">Bergomi 2F Parameters &mdash; Table 7.1, Set I</p>
+  <div class="param-grid">
+    <div class="param-card"><span class="param-name">nu (vol-of-vol)</span><span class="param-val">150%</span></div>
+    <div class="param-card"><span class="param-name">theta</span><span class="param-val">0.312</span></div>
+    <div class="param-card"><span class="param-name">k<sub>1</sub></span><span class="param-val">2.63</span></div>
+    <div class="param-card"><span class="param-name">k<sub>2</sub></span><span class="param-val">0.42</span></div>
+    <div class="param-card"><span class="param-name">rho<sub>12</sub></span><span class="param-val">&minus;70%</span></div>
+    <div class="param-card"><span class="param-name">r (discount)</span><span class="param-val">1%</span></div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:6px">
+    Calibrated with &sigma;<sub>0</sub>=100%, &tau;<sub>0</sub>=0.25, &alpha;=0.4 to match &nu;<sup>B</sup><sub>T</sub>(t)
+  </p>
+
+  <!-- COMPARISON BARS -->
+  <p class="sec-label" style="margin-top:28px">Pricing Results</p>
+  <div class="cmp">
+    <div class="cmp-row">
+      <div class="cmp-meta">
+        <span class="cmp-name">Method B &mdash; Black-Scholes (Bergomi eq. 7.41 approximation)</span>
+        <span class="cmp-value tag-blue">0.000671 var units</span>
+      </div>
+      <div class="cmp-track">
+        <div class="cmp-fill" id="bar-bs" style="width:0%;background:var(--blue)">
+          &sigma;<sub>V</sub> = 5.97%
+        </div>
+      </div>
+      <p class="cmp-ci">Implied vol: 5.97% &nbsp;|&nbsp; Price as % of fwd variance: 1.68%</p>
+    </div>
+    <div class="cmp-row">
+      <div class="cmp-meta">
+        <span class="cmp-name">Method A &mdash; Monte Carlo, Bergomi 2F (200,000 paths)</span>
+        <span class="cmp-value tag-green">0.008222 var units</span>
+      </div>
+      <div class="cmp-track">
+        <div class="cmp-fill" id="bar-mc" style="width:0%;background:var(--green)">
+          Impl. vol = 74.07%
+        </div>
+      </div>
+      <p class="cmp-ci">95% CI: [0.008148, 0.008296] &nbsp;|&nbsp; Std. error: 0.000038 &nbsp;|&nbsp; Martingale check: E[V] = 0.039941 &asymp; 0.04</p>
+    </div>
+  </div>
+
+  <!-- RESULT PANELS -->
+  <div class="results-grid">
+
+    <div class="result-panel">
+      <div class="result-panel-header">
+        <p class="result-panel-label">Method B</p>
+        <p class="result-panel-method">Black-Scholes (Lognormal Approx.)</p>
+      </div>
+      <div class="result-panel-body">
+        <p class="result-price tag-blue">0.000671</p>
+        <div class="formula">
+          &sigma;<sub>V</sub> = 2 &sdot; &nu;&#770;<sub>T1,T2</sub><br>
+          &nu;&#770;<sup>2</sup> = (1/T<sub>1</sub>) &int;<sub>0</sub><sup>T1</sup> &nu;<sup>2</sup><sub>T1,T2</sub>(t) dt
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">Integral &nu;<sup>2</sup> dt</span>
+          <span class="result-row-val">0.00044590</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">&nu;&#770; = sqrt(integral/T1)</span>
+          <span class="result-row-val">2.9863%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">&sigma;<sub>V</sub> = 2&nu;&#770;</span>
+          <span class="result-row-val tag-blue">5.9726%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">d<sub>1</sub> = &sigma;<sub>V</sub>&radic;T<sub>1</sub>/2</span>
+          <span class="result-row-val">0.02112</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">Price (variance units)</span>
+          <span class="result-row-val tag-blue">0.000671</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">% of fwd variance</span>
+          <span class="result-row-val">1.68%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-panel">
+      <div class="result-panel-header">
+        <p class="result-panel-label">Method A</p>
+        <p class="result-panel-method">Monte Carlo, Bergomi 2F</p>
+      </div>
+      <div class="result-panel-body">
+        <p class="result-price tag-green">0.008222</p>
+        <div class="formula">
+          &xi;<sup>u</sup><sub>T1</sub> = &xi;<sub>0</sub> exp( &nu;[&theta;J<sub>1</sub>+(1-&theta;)J<sub>2</sub>] &minus; &frac12;&nu;<sup>2</sup>QV )<br>
+          V&#772; = &frac{1}{T<sub>2</sub>&minus;T<sub>1</sub>} &int;<sub>T1</sub><sup>T2</sup> &xi;<sup>u</sup><sub>T1</sub> du
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">Paths / steps</span>
+          <span class="result-row-val">200,000 / 100</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">E[fwd var] (martingale)</span>
+          <span class="result-row-val">0.039941</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">Implied vol</span>
+          <span class="result-row-val tag-green">74.07%</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">95% CI</span>
+          <span class="result-row-val">[0.008148, 0.008296]</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">Price (variance units)</span>
+          <span class="result-row-val tag-green">0.008222</span>
+        </div>
+        <div class="result-row">
+          <span class="result-row-label">% of fwd variance</span>
+          <span class="result-row-val">20.56%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SUMMARY TABLE -->
+  <p class="sec-label">Summary Comparison</p>
+  <table class="sum-table">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Price (var units)</th>
+        <th>Implied Vol</th>
+        <th>vs Forward Variance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>B: Black-Scholes (Bergomi 7.41)</td>
+        <td>0.000671</td>
+        <td>5.97%</td>
+        <td>1.68%</td>
+      </tr>
+      <tr>
+        <td>A: Monte Carlo (Bergomi 2F)</td>
+        <td>0.008222</td>
+        <td>74.07%</td>
+        <td>20.56%</td>
+      </tr>
+      <tr>
+        <td><strong>Difference (MC &minus; BS)</strong></td>
+        <td>+0.007551</td>
+        <td>+68.1 vol pts</td>
+        <td>+1126%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- CHART -->
+  <p class="sec-label" style="margin-top:28px">Integrand: &nu;<sup>2</sup><sub>T1,T2</sub>(t) over [0, T<sub>1</sub>]</p>
+  <div class="chart-wrap">
+    <p class="chart-title">Instantaneous variance of the forward VS variance</p>
+    <p class="chart-sub">Increases as t approaches T<sub>1</sub> because the exponential kernels exp(&minus;k<sub>i</sub>(T&minus;t)) grow as t &rarr; T. Area under this curve gives &nu;&#770;<sup>2</sup>.</p>
+    <div style="position:relative;width:100%;height:220px">
+      <canvas id="nuChart" role="img" aria-label="Line chart of nu squared T1 T2 of t rising from 800 to 952 as t goes from 0 to 0.5">
+        nu squared T1T2 rises from 800 at t=0 to 952 at t=0.5.
+      </canvas>
+    </div>
+  </div>
+
+  <!-- OBSERVATIONS -->
+  <p class="sec-label">Analysis</p>
+
+  <div class="obs">
+    <p class="obs-title">Why are the two prices so different?</p>
+    <p class="obs-body">
+      The Bergomi eq. 7.41 approximation &sigma;<sub>V</sub> = 2&nu;&#770; is a first-order linearisation
+      valid only for small &nu;. At &nu; = 150% it breaks down completely. The forward VS variance
+      is an arithmetic average of lognormal forward variances &xi;<sup>u</sup><sub>T1</sub> over
+      u &isin; [T<sub>1</sub>, T<sub>2</sub>] &mdash; a basket of lognormals. Jensen's inequality
+      and the non-lognormality of the basket push the true price far above the linearised estimate.
+      The MC implied vol of 74.07% captures this convexity; the BS 5.97% does not.
+    </p>
+  </div>
+
+  <div class="obs">
+    <p class="obs-title">Martingale check</p>
+    <p class="obs-body">
+      Under the risk-neutral measure, forward variances are martingales:
+      E[&xi;<sup>u</sup><sub>T1</sub>] = &xi;<sup>u</sup><sub>0</sub> = 0.04 for all u.
+      The simulation gives E[V&#772;] = 0.039941, within one standard error of 0.04,
+      confirming the Cholesky decomposition, Ito integral accumulation,
+      and trapezoidal integration are all correct.
+    </p>
+  </div>
+
+  <div class="obs">
+    <p class="obs-title">Interpretation</p>
+    <p class="obs-body">
+      The ATM variance swaption costs 0.8222% of notional (in variance units)
+      under the full Monte Carlo simulation. The Black-Scholes approximation
+      underestimates by a factor of 12. The reliable price is the Monte Carlo result.
+      The BS result is useful only to illustrate the breakdown of the small-&nu;
+      approximation at the extreme vol-of-vol calibrated in Set I.
+    </p>
+  </div>
+
+  <footer>
+    <span>Rajvardhan Pawar &mdash; rsp9234 &nbsp;|&nbsp; NYU Courant MFE &nbsp;|&nbsp; May 2026</span>
+    <span>
+      <a href="https://github.com/pawarraj8888/variance-swaption" target="_blank">GitHub</a>
+      &nbsp;|&nbsp; Bergomi (2016), Ch. 7, Table 7.1 Set I
+    </span>
+  </footer>
+
+</div>
+
+<script>
+setTimeout(function() {
+  document.getElementById('bar-bs').style.width = '8%';
+  document.getElementById('bar-mc').style.width = '100%';
+}, 400);
+
+const tPts = [0.00,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.10,0.11,0.12,0.13,0.14,0.15,0.16,0.17,0.18,0.19,0.20,0.21,0.22,0.23,0.24,0.25,0.26,0.27,0.28,0.29,0.30,0.31,0.32,0.33,0.34,0.35,0.36,0.37,0.38,0.39,0.40,0.41,0.42,0.43,0.44,0.45,0.46,0.47,0.49,0.50];
+const nuVals = [800.6,805.1,809.6,814.1,818.6,823.0,827.4,831.7,836.0,840.3,844.5,848.7,852.8,856.9,861.0,864.9,868.9,872.7,876.5,880.3,884.0,887.6,891.1,894.6,898.0,901.3,904.5,907.7,910.7,913.7,916.6,919.4,922.1,924.7,927.2,929.6,931.9,934.1,936.2,938.2,940.1,941.9,943.5,945.1,946.5,947.8,949.0,950.1,951.1,952.0];
+
+new Chart(document.getElementById('nuChart'), {
+  type: 'line',
+  data: {
+    labels: tPts,
+    datasets: [{
+      label: 'nu^2_{T1,T2}(t) x 10^6',
+      data: nuVals,
+      borderColor: '#1a3a6b',
+      backgroundColor: 'rgba(26,58,107,0.07)',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      fill: true,
+      tension: 0.3
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: function(ctx){ return 't = ' + Number(ctx[0].label).toFixed(3) + 'y'; },
+          label: function(ctx){ return 'nu^2 x 10^6 = ' + ctx.parsed.y.toFixed(1); }
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 't (years)', color: '#6b6660', font: { family: "'DM Mono'", size: 11 } },
+        ticks: { maxTicksLimit: 6, color: '#6b6660', font: { family: "'DM Mono'", size: 10 },
+                 callback: function(v,i){ return Number(tPts[i]).toFixed(2); } },
+        grid: { color: 'rgba(0,0,0,0.06)' }
+      },
+      y: {
+        title: { display: true, text: 'nu^2_{T1,T2}(t) x 10^6', color: '#6b6660', font: { family: "'DM Mono'", size: 11 } },
+        ticks: { color: '#6b6660', font: { family: "'DM Mono'", size: 10 }, callback: function(v){ return v.toFixed(0); } },
+        grid: { color: 'rgba(0,0,0,0.06)' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
