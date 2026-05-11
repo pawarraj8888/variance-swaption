@@ -1,6 +1,5 @@
 # Variance Swaption Pricing — Bergomi Two-Factor Model
 
-**NYU MFE — Advanced Equity Derivatives, Homework 3 (Final Project)**
 *Rajvardhan Pawar (rsp9234), May 2026*
 
 ---
